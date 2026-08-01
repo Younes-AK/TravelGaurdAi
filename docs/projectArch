@@ -1,0 +1,45 @@
+
+                           CUSTOMER
+                              │
+                              ▼
+                     Merchant / ATM
+                              │
+                              ▼
+                    Acquiring Bank
+                              │
+                              ▼
+                    Visa / Mastercard
+                              │
+                              ▼
+                  Issuing Bank (BNP)
+                              │
+                 Authorization Request
+                              │
+                              ▼
+                    TravelGuard AI Layer
+                              │
+        ┌─────────────────────┼─────────────────────┐
+        ▼                     ▼                     ▼
+  Device Roaming        SIM Swap          Number Verification
+             (via CAMARA / Open Gateway APIs)
+                              │
+                              ▼
+                     Risk & Decision Engine
+                              │
+                              ▼
+      Decision: Approve / Step-Up / Reject + Explanation
+                              │
+                              ▼
+                    Issuing Bank (BNP)
+                              │
+                              ▼
+                    Visa / Mastercard
+                              │
+                              ▼
+                    Acquiring Bank
+                              │
+                              ▼
+                       Merchant / ATM
+                              │
+                              ▼
+                           Customer
