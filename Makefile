@@ -11,8 +11,9 @@ APP := travelguard_ai.api.app:app
 HOST ?= 127.0.0.1
 PORT ?= 8000
 IMAGE ?= travelguard-ai
+FRONTEND_DIR ?= frontend
 
-.PHONY: help venv install install-dev test compile run dev health ready docs demo docker-build docker-run clean
+.PHONY: help venv install install-dev test compile run dev health ready docs demo docker-build docker-run clean start_app
 
 help:
 	@echo "TravelGuard AI commands"
@@ -24,6 +25,7 @@ help:
 	@echo "  make compile       Compile Python files"
 	@echo "  make run           Run FastAPI on $(HOST):$(PORT)"
 	@echo "  make dev           Run FastAPI with reload"
+	@echo "  make start_app     Run backend + frontend together"
 	@echo "  make health        Check /health"
 	@echo "  make ready         Check /ready"
 	@echo "  make docs          Print Swagger UI URL"
@@ -53,6 +55,12 @@ run:
 
 dev:
 	PYTHONPATH=$(PYTHONPATH) PYTHONPYCACHEPREFIX=$(PYTHONPYCACHEPREFIX) $(UVICORN) $(APP) --host $(HOST) --port $(PORT) --reload
+
+start_app:
+	@trap 'kill 0' EXIT INT TERM; \
+	( PYTHONPATH=$(PYTHONPATH) PYTHONPYCACHEPREFIX=$(PYTHONPYCACHEPREFIX) $(UVICORN) $(APP) --host $(HOST) --port $(PORT) --reload ) & \
+	( cd $(FRONTEND_DIR) && npm run dev ) & \
+	wait
 
 health:
 	curl -sS http://$(HOST):$(PORT)/health
