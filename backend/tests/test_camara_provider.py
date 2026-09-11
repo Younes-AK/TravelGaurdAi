@@ -32,6 +32,25 @@ async def test_mock_provider_roaming_api():
 
 
 @pytest.mark.asyncio
+async def test_mock_provider_roaming_reflects_real_country_mismatch():
+    client = CamaraClient(provider=MockCamaraProvider(seed=2))
+
+    abroad = await client.get_roaming(ip_address="1.2.3.4", customer_country="MA", home_country="DE")
+    assert abroad.roaming is True
+    assert abroad.country == "MA"
+
+    domestic = await client.get_roaming(ip_address="1.2.3.4", customer_country="DE", home_country="DE")
+    assert domestic.roaming is False
+
+
+@pytest.mark.asyncio
+async def test_mock_provider_location_reflects_merchant_country():
+    client = CamaraClient(provider=MockCamaraProvider(seed=2))
+    signal = await client.get_location(ip_address="1.2.3.4", device_id="dev1", customer_country="TR")
+    assert signal.country == "TR"
+
+
+@pytest.mark.asyncio
 async def test_mock_provider_sim_swap_api():
     client = CamaraClient(provider=MockCamaraProvider(seed=3))
     signal = await client.get_sim_swap(customer_id="cust")

@@ -109,6 +109,7 @@ class DecisionAgent:
                         device_id=tx.device_id,
                         customer_country=tx.merchant_country,
                         phone_number=profile.phone_number,
+                        home_country=profile.home_country,
                     ),
                     profile_signals,
                     called,
@@ -121,6 +122,7 @@ class DecisionAgent:
                         ip_address=tx.ip_address or "",
                         customer_country=tx.merchant_country,
                         phone_number=profile.phone_number,
+                        home_country=profile.home_country,
                     ),
                     profile_signals,
                     called,
@@ -129,7 +131,11 @@ class DecisionAgent:
             elif api == "sim_swap":
                 await self._safe_camara_call(
                     "sim_swap",
-                    self.camara.get_sim_swap(customer_id=profile.customer_id, phone_number=profile.phone_number),
+                    self.camara.get_sim_swap(
+                        customer_id=profile.customer_id,
+                        phone_number=profile.phone_number,
+                        known_sim_age_days=profile.last_sim_swap_days,
+                    ),
                     profile_signals,
                     called,
                     reasoning,
@@ -149,6 +155,7 @@ class DecisionAgent:
                         device_id=tx.device_id,
                         customer_country=tx.merchant_country,
                         phone_number=profile.phone_number,
+                        trusted_device=tx.device_id in (profile.trusted_devices or []),
                     ),
                     profile_signals,
                     called,
@@ -208,6 +215,20 @@ class DecisionAgent:
         sim_days = (sim_signal or {}).get("days_since_swap") if isinstance(sim_signal, dict) else None
         if sim_days is not None and sim_days < 2:
             reasoning.append("recent_sim_swap")
+            return DecisionResult(
+                decision="REJECT",
+                risk_score=1.0,
+                confidence=0.99,
+                reasoning=reasoning,
+                signals_used=signals_used,
+                camara_calls=camara_calls,
+            )
+
+        device_swap_signal = signals.raw.get("device_swap")
+        if hasattr(device_swap_signal, "model_dump"):
+            device_swap_signal = device_swap_signal.model_dump()
+        if isinstance(device_swap_signal, dict) and device_swap_signal.get("swapped"):
+            reasoning.append("recent_device_swap")
             return DecisionResult(
                 decision="REJECT",
                 risk_score=1.0,

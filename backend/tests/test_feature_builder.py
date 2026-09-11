@@ -31,6 +31,40 @@ def test_build_basic_features():
     assert features["location_verified"] > 0.9
 
 
+def test_build_includes_device_swap_and_derived_distance():
+    tx = Transaction(
+        transaction_id="tx1",
+        amount=120.0,
+        currency="USD",
+        merchant_country="MA",
+        timestamp=datetime.now(UTC),
+        device_id="dev1",
+        ip_address="1.2.3.4",
+    )
+    profile = CustomerProfile(customer_id="c1", home_country="US", trusted_devices=["dev1"])
+    signals = Signals(raw={
+        "device_swap": {"swapped": True},
+        "device_location": {"distance_km": 250.0, "verified": True},
+    })
+
+    features = FeatureBuilder().build(tx, profile, signals)
+    assert features["device_swap_detected"] == 1.0
+    assert features["distance_from_home"] == 0.5
+
+
+def test_build_falls_back_to_country_mismatch_for_distance():
+    tx = Transaction(
+        transaction_id="tx1",
+        amount=120.0,
+        currency="USD",
+        merchant_country="MA",
+        timestamp=datetime.now(UTC),
+    )
+    profile = CustomerProfile(customer_id="c1", home_country="US")
+    features = FeatureBuilder().build(tx, profile, Signals(raw={}))
+    assert features["distance_from_home"] == 1.0
+
+
 def test_build_handles_missing_camara_signals():
     tx = Transaction(
         transaction_id="tx1",

@@ -51,6 +51,14 @@ def test_decision_agent_recent_sim_swap_reject():
     assert "recent_sim_swap" in res.reasoning
 
 
+def test_decision_agent_recent_device_swap_reject():
+    provider = MockCamaraProvider(overrides={"device_swap": {"provider": "mock", "confidence": 0.97, "swapped": True}})
+    agent = DecisionAgent(camara_provider=provider)
+    res = agent.decide(_tx(amount=700.0), _profile(), Signals(raw={}))
+    assert res.decision == "REJECT"
+    assert "recent_device_swap" in res.reasoning
+
+
 @pytest.mark.asyncio
 async def test_decide_async_works():
     agent = DecisionAgent(camara_provider=MockCamaraProvider(seed=10))

@@ -66,8 +66,13 @@ class FeatureBuilder:
         features["average_amount"] = float(profile.avg_transaction_amount or 0.0)
         features["time_of_day"] = float(tx.timestamp.hour)
 
-        # distance heuristic placeholder
-        features["distance_from_home"] = 0.0
+        # distance from home: prefer the CAMARA device-location distance signal,
+        # fall back to a coarse country-mismatch heuristic when it wasn't collected
+        distance_km = dev.get("distance_km") if dev else None
+        if distance_km is not None:
+            features["distance_from_home"] = float(min(float(distance_km) / 500.0, 1.0))
+        else:
+            features["distance_from_home"] = 1.0 if tx.merchant_country != profile.home_country else 0.0
 
         # stable, bounded transform for extremely large values
         amount = features["transaction_amount"]

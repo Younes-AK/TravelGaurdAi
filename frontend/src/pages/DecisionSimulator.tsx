@@ -1,4 +1,4 @@
-import { AlertCircle, CheckCircle2, Loader2, Network, Send, Smartphone, Wifi } from "lucide-react";
+import { AlertCircle, CheckCircle2, Loader2, MapPin, Network, Plane, ShieldAlert, Send, Smartphone, Wifi } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { DecisionBadge } from "../components/DecisionBadge";
@@ -7,7 +7,7 @@ import { RiskGauge } from "../components/RiskGauge";
 import { useDecisionHistory } from "../hooks/useDecisionHistory";
 import { useDecisionMutation } from "../hooks/useTravelGuardApi";
 import { useToast } from "../hooks/useToast";
-import type { DecisionRequest, DecisionResponse } from "../types/api";
+import type { Decision, DecisionRequest, DecisionResponse } from "../types/api";
 import type { DecisionRecord } from "../types/dashboard";
 import { formatLatency, formatPercent } from "../utils/format";
 
@@ -18,6 +18,11 @@ interface SimulatorForm {
   merchantCountry: string;
   merchantName: string;
   deviceId: string;
+  homeCountry: string;
+  trustedDevice: boolean;
+  lastSimSwapDays: number;
+  travelFrequency: number;
+  avgTransactionAmount: number;
 }
 
 const initialForm: SimulatorForm = {
@@ -27,7 +32,84 @@ const initialForm: SimulatorForm = {
   merchantCountry: "MA",
   merchantName: "",
   deviceId: "device-123",
+  homeCountry: "US",
+  trustedDevice: true,
+  lastSimSwapDays: 180,
+  travelFrequency: 3,
+  avgTransactionAmount: 110,
 };
+
+interface DemoScenario {
+  id: string;
+  label: string;
+  description: string;
+  expectedDecision: Decision;
+  icon: typeof Plane;
+  form: SimulatorForm;
+}
+
+const DEMO_SCENARIOS: DemoScenario[] = [
+  {
+    id: "tourist",
+    label: "Tourist",
+    description: "Ahmed buys coffee in Marrakech — frequent traveler, stable SIM",
+    expectedDecision: "APPROVE",
+    icon: Plane,
+    form: {
+      phoneNumber: "+4915112345678",
+      amount: 4.2,
+      currency: "EUR",
+      merchantCountry: "MA",
+      merchantName: "Cafe Marrakech",
+      deviceId: "device-ahmed",
+      homeCountry: "DE",
+      trustedDevice: true,
+      lastSimSwapDays: 247,
+      travelFrequency: 6,
+      avgTransactionAmount: 12,
+    },
+  },
+  {
+    id: "borderline",
+    label: "Borderline",
+    description: "First trip abroad, high-value electronics purchase in Istanbul",
+    expectedDecision: "STEP_UP",
+    icon: MapPin,
+    form: {
+      phoneNumber: "+4915112345679",
+      amount: 1850,
+      currency: "EUR",
+      merchantCountry: "TR",
+      merchantName: "Electronics Bazaar",
+      deviceId: "device-newtrip",
+      homeCountry: "DE",
+      trustedDevice: false,
+      lastSimSwapDays: 12,
+      travelFrequency: 0,
+      avgTransactionAmount: 90,
+    },
+  },
+  {
+    id: "fraud",
+    label: "Fraud",
+    description: "SIM swapped hours ago, then a large money transfer — takeover pattern",
+    expectedDecision: "REJECT",
+    icon: ShieldAlert,
+    form: {
+      phoneNumber: "+4915112345680",
+      amount: 2400,
+      currency: "EUR",
+      merchantCountry: "MA",
+      merchantName: "QuickTransfer",
+      deviceId: "device-attacker",
+      homeCountry: "DE",
+      trustedDevice: false,
+      lastSimSwapDays: 0,
+      travelFrequency: 1,
+      avgTransactionAmount: 60,
+    },
+  },
+];
 
 function Field({
   label,
@@ -76,6 +158,7 @@ function Toggle({
 }
 
 function buildPayload(form: SimulatorForm): DecisionRequest {
+  const deviceId = form.deviceId.trim() || undefined;
   return {
     transaction: {
       transaction_id: `tx-sim-${Date.now()}`,
@@ -84,13 +167,16 @@ function buildPayload(form: SimulatorForm): DecisionRequest {
       merchant_country: form.merchantCountry.toUpperCase(),
       merchant_name: form.merchantName.trim() || undefined,
       timestamp: new Date().toISOString(),
-      device_id: form.deviceId.trim() || undefined,
+      device_id: deviceId,
       ip_address: "203.0.113.10",
     },
     customer_profile: {
       customer_id: "cust-001",
-      home_country: "US",
-      trusted_devices: form.deviceId.trim() ? [form.deviceId.trim()] : [],
+      home_country: form.homeCountry.toUpperCase(),
+      trusted_devices: deviceId && form.trustedDevice ? [deviceId] : [],
+      last_sim_swap_days: Number(form.lastSimSwapDays),
+      travel_frequency: Number(form.travelFrequency),
+      avg_transaction_amount: Number(form.avgTransactionAmount),
       phone_number: form.phoneNumber,
     },
     signals: {},
@@ -112,8 +198,8 @@ export function DecisionSimulator() {
     setForm((current) => ({ ...current, [key]: value }));
   };
 
-  const analyze = async () => {
-    const payload = buildPayload(form);
+  const analyze = async (formOverride?: SimulatorForm) => {
+    const payload = buildPayload(formOverride ?? form);
     setLastPayload(payload);
     try {
       const response = await mutation.mutateAsync(payload);
@@ -134,6 +220,11 @@ export function DecisionSimulator() {
     }
   };
 
+  const runScenario = (scenario: DemoScenario) => {
+    setForm(scenario.form);
+    void analyze(scenario.form);
+  };
+
   return (
     <div className="grid gap-6 xl:grid-cols-[1fr_0.85fr]">
       <section className="rounded-lg border border-line bg-white p-5 shadow-card">
@@ -144,13 +235,38 @@ export function DecisionSimulator() {
           </div>
           <button
             type="button"
-            onClick={analyze}
+            onClick={() => analyze()}
             disabled={mutation.isPending}
             className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-blue-600 bg-blue-600 px-4 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {mutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
             Analyze Transaction
           </button>
+        </div>
+
+        <div className="mt-5">
+          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Demo scenarios</p>
+          <div className="mt-2 grid gap-2 sm:grid-cols-3">
+            {DEMO_SCENARIOS.map((scenario) => {
+              const Icon = scenario.icon;
+              return (
+                <button
+                  key={scenario.id}
+                  type="button"
+                  onClick={() => runScenario(scenario)}
+                  disabled={mutation.isPending}
+                  className="flex flex-col items-start gap-1 rounded-lg border border-line bg-zinc-50 p-3 text-left transition hover:border-blue-300 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-zinc-800">
+                    <Icon className="size-4 text-blue-600" />
+                    {scenario.label}
+                  </span>
+                  <span className="text-xs text-zinc-500">{scenario.description}</span>
+                  <DecisionBadge decision={scenario.expectedDecision} />
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         <div className="mt-6 grid gap-4 md:grid-cols-2">
@@ -178,6 +294,45 @@ export function DecisionSimulator() {
           <Field label="Device ID">
             <input className={inputClass()} value={form.deviceId} onChange={(event) => update("deviceId", event.target.value)} placeholder="Optional" />
           </Field>
+          <Field label="Home Country">
+            <input className={inputClass()} value={form.homeCountry} onChange={(event) => update("homeCountry", event.target.value)} maxLength={2} />
+          </Field>
+          <Field label="Last SIM Swap (days ago)">
+            <input
+              className={inputClass()}
+              type="number"
+              min="0"
+              value={form.lastSimSwapDays}
+              onChange={(event) => update("lastSimSwapDays", Number(event.target.value))}
+            />
+          </Field>
+          <Field label="Travel Frequency (trips/yr)">
+            <input
+              className={inputClass()}
+              type="number"
+              min="0"
+              value={form.travelFrequency}
+              onChange={(event) => update("travelFrequency", Number(event.target.value))}
+            />
+          </Field>
+          <Field label="Avg Transaction Amount">
+            <input
+              className={inputClass()}
+              type="number"
+              min="0"
+              value={form.avgTransactionAmount}
+              onChange={(event) => update("avgTransactionAmount", Number(event.target.value))}
+            />
+          </Field>
+        </div>
+
+        <div className="mt-4">
+          <Toggle
+            label="Device is on the customer's trusted-devices list"
+            checked={form.trustedDevice}
+            onChange={(value) => update("trustedDevice", value)}
+            icon={Smartphone}
+          />
         </div>
 
         <details className="mt-6 rounded-lg border border-line bg-zinc-50 p-4">

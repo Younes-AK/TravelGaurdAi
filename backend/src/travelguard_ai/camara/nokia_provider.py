@@ -143,6 +143,7 @@ class NokiaNetworkAsCodeProvider(CamaraProvider):
         device_id: Optional[str],
         customer_country: str,
         phone_number: Optional[str] = None,
+        home_country: Optional[str] = None,
     ) -> LocationSignal:
         phone = self._require_phone(phone_number, "location_verification")
 
@@ -179,7 +180,14 @@ class NokiaNetworkAsCodeProvider(CamaraProvider):
         except Exception as exc:
             raise CamaraInvalidResponseError("Invalid Nokia location verification response") from exc
 
-    async def get_roaming(self, *, ip_address: str, customer_country: str, phone_number: Optional[str] = None) -> RoamingSignal:
+    async def get_roaming(
+        self,
+        *,
+        ip_address: str,
+        customer_country: str,
+        phone_number: Optional[str] = None,
+        home_country: Optional[str] = None,
+    ) -> RoamingSignal:
         phone = self._require_phone(phone_number, "device_roaming_status")
 
         def call() -> Any:
@@ -202,7 +210,13 @@ class NokiaNetworkAsCodeProvider(CamaraProvider):
         except Exception as exc:
             raise CamaraInvalidResponseError("Invalid Nokia roaming response") from exc
 
-    async def get_sim_swap(self, *, customer_id: str, phone_number: Optional[str] = None) -> SimSwapSignal:
+    async def get_sim_swap(
+        self,
+        *,
+        customer_id: str,
+        phone_number: Optional[str] = None,
+        known_sim_age_days: Optional[int] = None,
+    ) -> SimSwapSignal:
         phone = self._require_phone(phone_number, "sim_swap")
 
         def call() -> Any:
@@ -252,6 +266,7 @@ class NokiaNetworkAsCodeProvider(CamaraProvider):
         device_id: str,
         customer_country: str,
         phone_number: Optional[str] = None,
+        trusted_device: Optional[bool] = None,
     ) -> DeviceLocationSignal:
         location = await self.get_location(
             ip_address="",

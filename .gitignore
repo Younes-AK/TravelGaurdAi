@@ -1,0 +1,23 @@
+# Python
+.venv/
+backend/.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.pytest_cache/
+
+# Node
+node_modules/
+
+# Build output
+frontend/dist/
+dist/
+build/
+
+# Environment
+.env
+.env.local
+
+# OS/editor
+.DS_Store

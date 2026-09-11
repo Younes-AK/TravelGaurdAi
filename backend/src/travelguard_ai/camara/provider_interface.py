@@ -20,13 +20,27 @@ class CamaraProvider(Protocol):
         device_id: Optional[str],
         customer_country: str,
         phone_number: Optional[str] = None,
+        home_country: Optional[str] = None,
     ) -> LocationSignal:
         ...
 
-    async def get_roaming(self, *, ip_address: str, customer_country: str, phone_number: Optional[str] = None) -> RoamingSignal:
+    async def get_roaming(
+        self,
+        *,
+        ip_address: str,
+        customer_country: str,
+        phone_number: Optional[str] = None,
+        home_country: Optional[str] = None,
+    ) -> RoamingSignal:
         ...
 
-    async def get_sim_swap(self, *, customer_id: str, phone_number: Optional[str] = None) -> SimSwapSignal:
+    async def get_sim_swap(
+        self,
+        *,
+        customer_id: str,
+        phone_number: Optional[str] = None,
+        known_sim_age_days: Optional[int] = None,
+    ) -> SimSwapSignal:
         ...
 
     async def get_device_swap(self, *, customer_id: str, phone_number: Optional[str] = None) -> DeviceSwapSignal:
@@ -38,6 +52,7 @@ class CamaraProvider(Protocol):
         device_id: str,
         customer_country: str,
         phone_number: Optional[str] = None,
+        trusted_device: Optional[bool] = None,
     ) -> DeviceLocationSignal:
         ...
 

@@ -26,23 +26,43 @@ class CamaraClient:
         device_id: Optional[str],
         customer_country: str,
         phone_number: Optional[str] = None,
+        home_country: Optional[str] = None,
     ) -> LocationSignal:
         return await self.provider.get_location(
             ip_address=ip_address,
             device_id=device_id,
             customer_country=customer_country,
             phone_number=phone_number,
+            home_country=home_country,
         )
 
-    async def get_roaming(self, *, ip_address: str, customer_country: str, phone_number: Optional[str] = None) -> RoamingSignal:
+    async def get_roaming(
+        self,
+        *,
+        ip_address: str,
+        customer_country: str,
+        phone_number: Optional[str] = None,
+        home_country: Optional[str] = None,
+    ) -> RoamingSignal:
         return await self.provider.get_roaming(
             ip_address=ip_address,
             customer_country=customer_country,
             phone_number=phone_number,
+            home_country=home_country,
         )
 
-    async def get_sim_swap(self, *, customer_id: str, phone_number: Optional[str] = None) -> SimSwapSignal:
-        return await self.provider.get_sim_swap(customer_id=customer_id, phone_number=phone_number)
+    async def get_sim_swap(
+        self,
+        *,
+        customer_id: str,
+        phone_number: Optional[str] = None,
+        known_sim_age_days: Optional[int] = None,
+    ) -> SimSwapSignal:
+        return await self.provider.get_sim_swap(
+            customer_id=customer_id,
+            phone_number=phone_number,
+            known_sim_age_days=known_sim_age_days,
+        )
 
     async def get_device_swap(self, *, customer_id: str, phone_number: Optional[str] = None) -> DeviceSwapSignal:
         return await self.provider.get_device_swap(customer_id=customer_id, phone_number=phone_number)
@@ -53,11 +73,13 @@ class CamaraClient:
         device_id: str,
         customer_country: str,
         phone_number: Optional[str] = None,
+        trusted_device: Optional[bool] = None,
     ) -> DeviceLocationSignal:
         return await self.provider.get_device_location(
             device_id=device_id,
             customer_country=customer_country,
             phone_number=phone_number,
+            trusted_device=trusted_device,
         )
 
     async def get_number_verification(self, *, phone_number: str) -> NumberVerificationSignal:

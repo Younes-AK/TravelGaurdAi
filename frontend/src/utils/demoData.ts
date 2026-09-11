@@ -65,7 +65,16 @@ export function createSignalSet(homeCountry: string, merchantCountry: string) {
 }
 
 function seedResponse(decision: Decision, score: number, latency: number, calls: string[]): DecisionResponse {
-  const confidence = Math.max(score, 1 - score);
+  const confidence = Math.min(Math.max(2 * Math.abs(score - 0.5), 0), 1);
+  const signalsUsed = ["location", "roaming", ...calls].filter((value, index, arr) => arr.indexOf(value) === index);
+  const networkSignals: Record<string, unknown> = {};
+  for (const signal of signalsUsed) {
+    networkSignals[signal] = {
+      signal_name: signal,
+      provider: "mock",
+      confidence: Number((0.8 + Math.random() * 0.18).toFixed(2)),
+    };
+  }
   return {
     decision,
     risk_score: score,
@@ -76,8 +85,9 @@ function seedResponse(decision: Decision, score: number, latency: number, calls:
         : decision === "STEP_UP"
           ? ["medium_risk_score", "feature:amount_ratio_to_average:4.218", "feature:roaming:1.000"]
           : ["high_risk_score", "recent_sim_swap", "feature:sim_swap_days:1.000"],
-    signals_used: ["location", "roaming", ...calls].filter((value, index, arr) => arr.indexOf(value) === index),
+    signals_used: signalsUsed,
     camara_calls: calls,
+    network_signals: networkSignals,
     latency_ms: latency,
     request_id: crypto.randomUUID(),
   };
