@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import logging
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.encoders import jsonable_encoder
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from travelguard_ai.api.dependencies import ServiceUnavailableError, create_travelguard_services
@@ -32,6 +34,18 @@ def create_app() -> FastAPI:
         version="0.1.0",
         description="Demo-ready API layer for bank transaction risk decisions.",
         lifespan=lifespan,
+    )
+    allowed_origins = [
+        origin.strip()
+        for origin in os.environ.get("CORS_ALLOWED_ORIGINS", "*").split(",")
+        if origin.strip()
+    ]
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=allowed_origins,
+        allow_credentials=False,
+        allow_methods=["*"],
+        allow_headers=["*"],
     )
     app.add_middleware(RequestLoggingMiddleware)
     app.include_router(router)
